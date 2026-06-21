@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>돈가스로드 (Katsu Road) - 전국 돈가스 맛집 지도</title>
+  <meta name="description" content="전국의 바삭하고 맛있는 돈가스 맛집을 지도에서 탐방하고 후기를 남겨보세요. 경양식부터 일식 카츠까지 맞춤형 필터와 즐겨찾기 기능을 제공합니다.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- CDNs -->
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Browser Image Compression -->
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- APP CONTAINER -->
+  <div class="app-layout">
+    
+    <!-- DESKTOP / MOBILE SIDEBAR PANEL -->
+    <aside class="sidebar" id="sidebar">
+      <header class="brand-header">
+        <div class="logo">
+          <i data-lucide="map-pin"></i>
+          <h1>돈가스로드<span>Katsu Road</span></h1>
+        </div>
+        <div class="auth-action" id="header-auth-section">
+          <!-- Dynamically Rendered: Login button or User Profile Icon -->
+          <button class="btn btn-primary btn-sm" id="btn-login-trigger">로그인 / 가입</button>
+        </div>
+      </header>
+
+      <!-- Search & Filters Container -->
+      <div class="search-container">
+        <div class="search-box">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="search-input" placeholder="지역, 식당명, 또는 메뉴 검색..." autocomplete="off">
+          <button id="search-clear-btn" class="hidden"><i data-lucide="x"></i></button>
+        </div>
+        <!-- Autocomplete Dropdown -->
+        <div id="autocomplete-list" class="autocomplete-dropdown hidden"></div>
+
+        <!-- Filter Pills -->
+        <div class="filter-pills-row">
+          <button class="filter-pill active" data-category="all">전체</button>
+          <button class="filter-pill" data-category="japanese">일식카츠</button>
+          <button class="filter-pill" data-category="korean">경양식</button>
+        </div>
+
+        <div class="filter-actions-row">
+          <select id="filter-price" class="filter-select">
+            <option value="all">가격대 전체</option>
+            <option value="10k_less">~1만원 이하</option>
+            <option value="10k_20k">1만~2만원</option>
+            <option value="20k_more">2만원 이상</option>
+          </select>
+          <select id="sort-select" class="filter-select">
+            <option value="rating">평점순</option>
+            <option value="reviews">리뷰 많은순</option>
+            <option value="name">이름순</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Main Sidebar Scrollable Area -->
+      <main class="sidebar-content" id="sidebar-main-content">
+        
+        <!-- Tab 1: Restaurant List View (Default) -->
+        <section id="panel-restaurant-list" class="content-panel active">
+          <div class="section-title">
+            <h3>인기 맛집 목록 <span id="restaurant-count">0</span></h3>
+            <button class="btn btn-text btn-icon" id="btn-add-restaurant-trigger">
+              <i data-lucide="plus-circle"></i> 맛집 제보
+            </button>
+          </div>
+          <div class="cards-list" id="restaurant-cards-container">
+            <!-- Dynamically populated via JS -->
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>돈가스 맛집 불러오는 중...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 2: Restaurant Detail View -->
+        <section id="panel-restaurant-detail" class="content-panel">
+          <button class="btn-back" id="btn-detail-back">
+            <i data-lucide="arrow-left"></i> 목록으로 돌아가기
+          </button>
+          <div class="detail-container" id="restaurant-detail-container">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+        
+      </main>
+      
+      <!-- Footer Nav (Mobile Tabs / Quick Actions) -->
+      <nav class="bottom-nav">
+        <button class="nav-item active" id="nav-map-tab">
+          <i data-lucide="map"></i>
+          <span>지도</span>
+        </button>
+        <button class="nav-item" id="nav-list-tab">
+          <i data-lucide="list"></i>
+          <span>목록</span>
+        </button>
+        <button class="nav-item" id="nav-mypage-tab">
+          <i data-lucide="user"></i>
+          <span>마이</span>
+        </button>
+        <button class="nav-item hidden" id="nav-admin-tab">
+          <i data-lucide="shield-check"></i>
+          <span>관리자</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- MAP CANVAS AREA -->
+    <div class="map-view-wrapper">
+      <div id="map"></div>
+      
+      <!-- Floating Map Utility buttons -->
+      <div class="map-floating-controls">
+        <button id="btn-gps-current" title="현재 내 위치로 이동">
+          <i data-lucide="locate"></i>
+        </button>
+        <button id="btn-zoom-in" title="확대">
+          <i data-lucide="plus"></i>
+        </button>
+        <button id="btn-zoom-out" title="축소">
+          <i data-lucide="minus"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- MOBILE SWIPEABLE BOTTOM SHEET -->
+    <div class="bottom-sheet" id="bottom-sheet">
+      <div class="bottom-sheet-handle-bar" id="bottom-sheet-drag">
+        <div class="handle"></div>
+      </div>
+      <div class="bottom-sheet-content" id="bottom-sheet-content-area">
+        <!-- Content mirrored from sidebar main content on mobile -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MYPAGE PANEL (OVERLAY) -->
+  <div class="panel-overlay hidden" id="mypage-panel">
+    <div class="panel-container">
+      <header class="panel-header">
+        <h2>마이페이지</h2>
+        <button class="btn-close" id="btn-mypage-close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="panel-body">
+        <div class="user-profile-summary">
+          <div class="avatar"><i data-lucide="user"></i></div>
+          <div>
+            <h3 id="mypage-nickname">사용자 닉네임</h3>
+            <p id="mypage-email">user@email.com</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-logout">로그아웃</button>
+        </div>
+
+        <div class="tab-nav">
+          <button class="tab-btn active" data-target="mypage-bookmarks">즐겨찾기 목록</button>
+          <button class="tab-btn" data-target="mypage-reviews">내가 쓴 리뷰</button>
+        </div>
+
+        <div class="tab-content active" id="mypage-bookmarks">
+          <div class="grid-list" id="my-bookmarks-container">
+            <p class="empty-state">즐겨찾기한 돈가스집이 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" id="mypage-reviews">
+          <div class="cards-list" id="my-reviews-container">
+            <p class="empty-state">작성한 리뷰가 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD PANEL (OVERLAY) -->
+  <div class="panel-overlay hidden" id="admin-panel">
+    <div class="panel-container">
+      <header class="panel-header">
+        <h2>관리자 대시보드</h2>
+        <button class="btn-close" id="btn-admin-close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="panel-body">
+        
+        <div class="admin-top-stats">
+          <div class="stat-card">
+            <h4>총 돈가스집</h4>
+            <p id="stat-total-restaurants">0</p>
+          </div>
+          <div class="stat-card">
+            <h4>승인 대기중</h4>
+            <p id="stat-pending-restaurants">0</p>
+          </div>
+          <div class="stat-card">
+            <h4>신고된 리뷰</h4>
+            <p id="stat-reported-reviews">0</p>
+          </div>
+        </div>
+
+        <div class="tab-nav">
+          <button class="tab-btn active" data-target="admin-approvals">맛집 승인 대기목록</button>
+          <button class="tab-btn" data-target="admin-reviews">신고 리뷰 관리</button>
+          <button class="tab-btn" data-target="admin-utility">시스템 유틸리티 (시딩)</button>
+        </div>
+
+        <div class="tab-content active" id="admin-approvals">
+          <div class="cards-list" id="admin-pending-container">
+            <p class="empty-state">승인 대기 중인 맛집이 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" id="admin-reviews">
+          <div class="cards-list" id="admin-reported-reviews-container">
+            <p class="empty-state">신고 처리 대기 중인 리뷰가 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" id="admin-utility">
+          <div class="utility-card">
+            <h3>전국 돈가스집 1,000개 데이터 구축</h3>
+            <p>seed-data.js에 내장된 알고리즘을 이용해 전국 1,050개의 돈가스 맛집 기본 정보를 Supabase 데이터베이스에 일괄 삽입합니다.</p>
+            <button class="btn btn-primary" id="btn-run-seeder">1,050개 맛집 데이터 시딩 시작</button>
+            <div class="seeder-progress hidden" id="seeder-progress-box">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="seeder-progress-bar" style="width: 0%"></div>
+              </div>
+              <p id="seeder-progress-text">준비 중...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTHENTICATION MODAL -->
+  <div class="modal-overlay hidden" id="auth-modal">
+    <div class="modal-box">
+      <button class="modal-close" id="btn-auth-close"><i data-lucide="x"></i></button>
+      <div id="auth-view-login">
+        <h2>로그인</h2>
+        <p class="modal-subtitle">돈가스로드에 오신 것을 환영합니다.</p>
+        <form id="form-login">
+          <div class="form-group">
+            <label for="login-email">이메일 주소</label>
+            <input type="email" id="login-email" required placeholder="example@email.com">
+          </div>
+          <div class="form-group">
+            <label for="login-password">비밀번호</label>
+            <input type="password" id="login-password" required placeholder="비밀번호를 입력하세요">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">로그인</button>
+        </form>
+        <p class="auth-toggle-msg">아직 계정이 없으신가요? <button class="btn-link" id="btn-go-signup">회원가입</button></p>
+      </div>
+
+      <div id="auth-view-signup" class="hidden">
+        <h2>회원가입</h2>
+        <p class="modal-subtitle">프로필을 등록하고 맛집을 즐겨찾기 하세요.</p>
+        <form id="form-signup">
+          <div class="form-group">
+            <label for="signup-email">이메일 주소</label>
+            <input type="email" id="signup-email" required placeholder="example@email.com">
+          </div>
+          <div class="form-group">
+            <label for="signup-nickname">닉네임</label>
+            <input type="text" id="signup-nickname" required placeholder="닉네임을 입력하세요">
+          </div>
+          <div class="form-group">
+            <label for="signup-password">비밀번호 (6자 이상)</label>
+            <input type="password" id="signup-password" required minlength="6" placeholder="비밀번호를 입력하세요">
+          </div>
+          <div class="form-group">
+            <label for="signup-password-confirm">비밀번호 확인</label>
+            <input type="password" id="signup-password-confirm" required minlength="6" placeholder="비밀번호를 한번 더 입력하세요">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">회원가입 완료</button>
+        </form>
+        <p class="auth-toggle-msg">이미 계정이 있으신가요? <button class="btn-link" id="btn-go-login">로그인</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTER RESTAURANT MODAL -->
+  <div class="modal-overlay hidden" id="register-modal">
+    <div class="modal-box">
+      <button class="modal-close" id="btn-register-close"><i data-lucide="x"></i></button>
+      <h2>신규 맛집 제보</h2>
+      <p class="modal-subtitle">알고 계신 돈가스 맛집 위치와 정보를 입력해주세요. 관리자 검수 후 지도에 등록됩니다.</p>
+      <form id="form-register-restaurant">
+        <div class="form-group">
+          <label for="reg-name">식당명 *</label>
+          <input type="text" id="reg-name" required placeholder="예: 바삭카츠 강남본점">
+        </div>
+        
+        <div class="form-group">
+          <label>위치 지정 (지도 클릭 또는 검색) *</label>
+          <div class="input-row">
+            <input type="text" id="reg-address" required readonly placeholder="지도에서 위치를 클릭하거나 주소를 검색하세요">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-reg-address-search">주소 검색</button>
+          </div>
+          <div class="coord-inputs">
+            <input type="hidden" id="reg-lat">
+            <input type="hidden" id="reg-lng">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-phone">전화번호</label>
+          <input type="text" id="reg-phone" placeholder="예: 02-123-4567">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg-category">카테고리 *</label>
+            <select id="reg-category" required class="filter-select">
+              <option value="japanese">일식 돈가스 (카츠)</option>
+              <option value="korean">경양식 돈가스</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reg-price">가격대 *</label>
+            <select id="reg-price" required class="filter-select">
+              <option value="10k_less">~1만원 이하</option>
+              <option value="10k_20k">1만~2만원</option>
+              <option value="20k_more">2만원 이상</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-menu">대표 메뉴 *</label>
+          <input type="text" id="reg-menu" required placeholder="예: 안심카츠정식 (14,000원)">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-hours">영업시간</label>
+          <input type="text" id="reg-hours" placeholder="예: 매일 11:00 - 21:00 (브레이크타임 15-17시)">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-photo">대표 이미지 업로드</label>
+          <input type="file" id="reg-photo" accept="image/*">
+          <div class="file-preview hidden" id="reg-photo-preview-box">
+            <img src="" id="reg-photo-preview" alt="미리보기">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">제보하기 (검수 대기)</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- WRITE REVIEW MODAL -->
+  <div class="modal-overlay hidden" id="review-modal">
+    <div class="modal-box">
+      <button class="modal-close" id="btn-review-close"><i data-lucide="x"></i></button>
+      <h2>리뷰 작성</h2>
+      <p class="modal-subtitle" id="review-modal-restaurant-name">식당명에 대한 리뷰 작성</p>
+      <form id="form-review">
+        <input type="hidden" id="review-restaurant-id">
+        
+        <div class="form-group">
+          <label>평점 선택 *</label>
+          <div class="rating-stars" id="review-star-rating">
+            <i data-lucide="star" class="star-btn" data-value="1"></i>
+            <i data-lucide="star" class="star-btn" data-value="2"></i>
+            <i data-lucide="star" class="star-btn" data-value="3"></i>
+            <i data-lucide="star" class="star-btn" data-value="4"></i>
+            <i data-lucide="star" class="star-btn" data-value="5"></i>
+          </div>
+          <input type="hidden" id="review-rating-value" required>
+        </div>
+
+        <div class="form-group">
+          <label for="review-content">후기 작성 *</label>
+          <textarea id="review-content" required rows="4" placeholder="돈가스의 겉바속촉함, 소스 맛, 매장 분위기 등 생생한 후기를 공유해주세요!"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="review-photo">사진 첨부 (최대 1장)</label>
+          <input type="file" id="review-photo" accept="image/*">
+          <div class="file-preview hidden" id="review-photo-preview-box">
+            <img src="" id="review-photo-preview" alt="미리보기">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">리뷰 등록</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- App Configuration & Logics -->
+  <script src="config.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
